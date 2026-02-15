@@ -1,0 +1,1 @@
+pyinstaller -F --distpath "" --upx-dir "C:\upx-5.1.0-win64" midaseq.py
