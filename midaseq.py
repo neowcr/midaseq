@@ -17,8 +17,8 @@ setting = {
         "description": "Enable Running Status optimization."
     },
     "enable_optimizeRedundantChannelParams" : {
-        "value": False,
-        "description": "This makes so, for example, the first volume change of the MIDI is put before the main sequence itself, making the file slightly more organized."
+        "value": True,
+        "description": "Removes events that set parameters to default at the start of the song (which is completely redundant)."
     },
     "remove_duplicateEvents" : {
         "value": True,
@@ -43,7 +43,7 @@ print(r" | |\/| | | | | |  | |/ /\ \  \___ \|  __|| |  | |  ")
 print(r" | |  | |_| |_| |__| / ____ \ ____) | |___| |__| |  ")
 print(r" |_|  |_|_____|_____/_/    \_\_____/|______\___\_\  ")
 print("")
-print("Version 0.8")
+print("Version 0.9")
 print("Made by: Neoware (nwcr)")
 print("exe version made with PyInstaller")
 
@@ -74,7 +74,7 @@ allowConfigAtRuntime = True; #If True, asks for settings at runtime
 our_path = sys.argv[0];
 our_file_extension = os.path.splitext( os.path.basename(our_path)) [1];
 if (our_file_extension == ".py"):
-    allowConfigAtRuntime = False;
+    allowConfigAtRuntime = True;
     pass;
 else:
     #In case I mess up and leave these in the incorrect default values when testing
@@ -650,23 +650,23 @@ def convert_event( _track_id , initial_read_pos : int , absolute_time : int , ru
                     #starting_channel_vol = [] * track_amount;
                     #starting_channel_pan = [] * track_amount;
 
-                    if (control_id == 7):
+                    if (control_id == 7 and control_value == 100):
                         #Volume
                         if ( starting_channel_vol[ event_channel ] == None ):
                             dprint("First volume setting")
-                            skip_listing = True;
-
-                            if (control_value != 100):
-                                #Disregard if we're just setting to default anyway
+                            
+                            if (control_value == 100):
+                                skip_listing = True;
                                 starting_channel_vol[ event_channel ] = control_value;
+
                     elif (control_id == 10):
                         #Panning
-                        if ( starting_channel_vol[ event_channel ] == None ):
+                        if ( starting_channel_pan[ event_channel ] == None ):
                             dprint("First volume setting")
-                            skip_listing = True;
-
-                            if (control_value != 64):
+                            
+                            if (control_value == 64):
                                 #Disregard if we're just setting to default anyway
+                                skip_listing = True;
                                 starting_channel_pan[ event_channel ] = control_value;
 
 
@@ -675,10 +675,11 @@ def convert_event( _track_id , initial_read_pos : int , absolute_time : int , ru
                     program_id = event_data[1];
 
                     if ( starting_channel_program[ event_channel ] == None  ):
-                        skip_listing = True;
+                        #skip_listing = True;
 
                         if ( program_id != event_channel ):
                             #Disregard if we're just setting to default anyway
+                            skip_listing = True;
                             starting_channel_program[ event_channel ] = program_id;
 
 
@@ -783,123 +784,21 @@ def read_and_list():
 
 
 def merge_list():
-    ##WHEN YOU WRITE THE LIST, MAKE A VARIABLE TO SAVE THE BIGGEST ABSOLUTE TIME THERE IS
-    ##IN THE FUNCTION ABOVE
-    
-
-    track_number = int.from_bytes(input_trackCount);
-    current_time = 0;
-
-    longest_track = max( event_list , key=len );
-    longest_track_id = event_list.index( longest_track ) ;
-    last_time = 0;
-
-    print("")
-    print_topic("step 3 - merge event list")
-
-    #dprint( event_list[2] );
-    dprint("")
-
-    passed_time = 0;
-    next_time = passed_time;
-
-    last_time_of_track = [ 0 ] * track_number;
-    last_index_of_track = [ 0 ] * track_number;
-    track_finished_reading = [ False ] * track_number;
-    #track_catchup = [0] * track
-
-    global latest_time;
     global merged_event_list;
 
-    while ( passed_time < latest_time ):
 
-            for _t in range( track_number ):
-                
+    for t in event_list:
+        merged_event_list = merged_event_list + t;
 
-                dprint("// Track ", _t)
-
-                current_track = event_list[ _t];
-
-                if (current_track == [] or track_finished_reading[_t] == True):
-                    continue; #skip to next iteration if this track is empty
-                    #or if finished reading track
-
-                i = last_index_of_track[_t];
-                
-
-                #while( current_track[i][0] <= passed_time ):
-                current_event = current_track[i];
-
-
-                if current_event[0] > passed_time:
-                    dprint("This event happens later so we're skipping it")
-                    last_time_of_track[_t] = current_track[i + 1][0];
-                    continue;
-
-                dprint( "reading position:  " , i );
-                dprint( current_event )
-
-                merged_event_list.append( current_event );
-
-
-                if (i >= len(current_track) - 1):
-                    dprint("that was the last event of track!")
-                    track_finished_reading[_t] = True;
-                    
-                else:
-                    next_event = current_track[i + 1]
-
-                    if (next_event[0] > current_event[0]):
-                        last_time_of_track[_t] = next_event[0];
-
-
-                    i += 1;
-                    last_index_of_track[_t] = i;
-                    
-                 
-            dprint("")
-            dprint("")
-
-            dprint("FINISHED GOING THROUGH ALL TRACKS, HERE ARE THE RESULTS")
-            dprint( "last_time_of_track", last_time_of_track );
-            dprint( "last_index_of_track", last_index_of_track )
-            dprint( "track_finished_reading", track_finished_reading );
-            track_lengths = [];
-
-            for i in event_list:
-                track_lengths.append( len(i) );
-            dprint(" track_lengths " , track_lengths )
-            dprint(" ")
-
-
-            #Check if there's still a track left to catch up
-            remaining_times = [];
-            for _t in range(track_number):
-                if ( not track_finished_reading[_t] ):
-                    remaining_times.append( last_time_of_track[_t] )
-
-            if (  remaining_times != [] and min(remaining_times) <= passed_time  ):
-                next_time = passed_time;
-                dprint("wait for catching up...")
-            else:
-            
-                if max( last_time_of_track ) > passed_time:
-                    next_time = min(i for i in last_time_of_track if i > passed_time)
-
-                
-            dprint("")
-            dprint( "next time:" , next_time );
-            dprint("")
-            dprint("")
-            passed_time = next_time;
+    #Sort from lowest absolute time to highest, so there is no risk of negative delta
+    merged_event_list.sort(key=lambda item: item[0] );
 
     if ( setting["remove_duplicateEvents"]["value"] ):
         dprint("cleaning up duplicates from merged list");
         merged_event_list = remove_duplicates( merged_event_list );
 
 
-    #Sort from lowest absolute time to highest, so there is no risk of negative delta
-    merged_event_list.sort(key=lambda item: item[0] );
+    
 
     print("merged list complete!")
 
@@ -909,6 +808,7 @@ def merge_list():
 
 
     dprint("...");
+
 
 
 def main_sequence():
@@ -1063,19 +963,23 @@ def start_writing_file():
     track_amount = min(track_amount,16);
     empty_list = () * track_amount;
 
-    #Init volumes
-    if ( starting_channel_vol != empty_list ):
-        for track_number in range(track_amount):
-            _start_val = starting_channel_vol[track_number];
-            if ( _start_val != None ):
-                write_control_change( 0, track_number, 7, _start_val );
+    if (False):
+        #Init volumes
+        starting_channel_vol = empty_list;
+        starting_channel_pan != empty_list
 
-    #Init panning
-    if ( starting_channel_pan != empty_list ):
-        for track_number in range(track_amount):
-            _start_val = starting_channel_pan[track_number];
-            if ( _start_val != None ):
-                write_control_change( 0, track_number, 10, _start_val );
+        if ( starting_channel_vol != empty_list ):
+            for track_number in range(track_amount):
+                _start_val = starting_channel_vol[track_number];
+                if ( _start_val != None ):
+                    write_control_change( 0, track_number, 7, _start_val );
+
+        #Init panning
+        if ( starting_channel_pan != empty_list ):
+            for track_number in range(track_amount):
+                _start_val = starting_channel_pan[track_number];
+                if ( _start_val != None ):
+                    write_control_change( 0, track_number, 10, _start_val );
 
     #Init program change
     for track_number in range(track_amount):
