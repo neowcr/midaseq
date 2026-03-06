@@ -1,5 +1,10 @@
 #*# ____//―――――― Settings ――――――\\____#*#
 setting = {
+    "disable_looping" : {
+        "value": False,
+        "default": 0, #Always leave this default empty here.
+        "description": "Overrides all program changes to be specified instrument value."
+    },
     "overrideAllPrograms" : {
         "value": -1,
         "default": 0,
@@ -521,12 +526,14 @@ def write_program_change( delta_time , _track_number, program_id ):
     file.write ( program_id.to_bytes(1, byteorder='big') );
 
 def write_loop_start():
-    write_control_change(0, 0, 99, 20);
+    if ( setting["disable_looping"]["value"] == False ):
+        write_control_change(0, 0, 99, 20);
 
 
     
 def write_loop_end(delta_time):
-    write_control_change(delta_time, 0, 99, 30);
+    if ( setting["disable_looping"]["value"] == False ):
+        write_control_change(delta_time, 0, 99, 30);
 
 
 
