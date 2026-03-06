@@ -2,34 +2,47 @@
 setting = {
     "overrideAllPrograms" : {
         "value": -1,
+        "default": 0,
         "description": "Overrides all program changes to be specified instrument value."
     },
     "ignoreDrumChannel" : {
         "value": False,
+        "default": 0,
         "description": "Ignores midi channel 10 from the input."
     },
     "enable_debugPrinting" : {
         "value": False,
+        "default": 0,
         "description": "Displays additional information. Only useful for debugging, as it slows down the program."
     },
     "enable_runningStatusWriting" : {
         "value": True,
+        "default": 0,
         "description": "Enable Running Status optimization."
     },
-    "enable_optimizeRedundantChannelParams" : {
+    "remove_redundantChannelParams" : {
         "value": True,
+        "default": 0,
         "description": "Removes events that set parameters to default at the start of the song (which is completely redundant)."
     },
     "remove_duplicateEvents" : {
         "value": True,
+        "default": 0,
         "description": "Removes unnecessary events that are exactly the same as others. (Specially useful for FL Studio MIDIs)"
+    },
+    "reorderEvents" : {
+        "value": False,
+        "default": 0,
+        "description": "Reorders events of the same type to be closer together, making running status optimization more effective."
     }
 }
 
-
+for s in setting:
+    setting[s]["default"] = setting[s]["value"];
 
 
  
+
 
  
 
@@ -43,10 +56,10 @@ print(r" | |\/| | | | | |  | |/ /\ \  \___ \|  __|| |  | |  ")
 print(r" | |  | |_| |_| |__| / ____ \ ____) | |___| |__| |  ")
 print(r" |_|  |_|_____|_____/_/    \_\_____/|______\___\_\  ")
 print("")
-print("Version 0.9")
+print("Version 1.0")
 print("Made by: Neoware (nwcr)")
 print("exe version made with PyInstaller")
-
+print("\n")
 
 
 
@@ -54,6 +67,16 @@ print("exe version made with PyInstaller")
 import math
 import os
 import sys
+import platform
+import json
+
+def dprint( *args ):
+    if ( setting["enable_debugPrinting"]["value"] ):
+        print( *args );
+
+def print_topic( *args ):
+    print( "  ■ ▲        /───────────── " , "log-topic: ", *args );
+    print( "  𐄂 ● ______/");
 
 def show_exception_and_exit(exc_type, exc_value, tb):
     import traceback
@@ -62,7 +85,6 @@ def show_exception_and_exit(exc_type, exc_value, tb):
     traceback.print_exception(exc_type, exc_value, tb)
     input("\nPress key to exit.")
     sys.exit()
-
 
 sys.excepthook = show_exception_and_exit
 
@@ -82,69 +104,103 @@ else:
     allowConfigAtRuntime = True
 
 
+def config_load( config_save_path ):
+    global setting;
+
+    if os.path.exists( config_save_path ):
+        with open(config_save_path, 'r') as config_file:
+            setting = json.load( config_file );
+
+    pass;
+
+def config_save( config_save_path ):
+    with open( config_save_path , "w" ) as config_file:
+        json.dump( setting, config_file , indent=2)
+    print("Configuration file saved at: " , config_save_path);
 
 
 
-if (allowConfigAtRuntime):
-    isGonnaChangeSettings = input("Wish to change any settings? [y/n]\n")
-    isGonnaChangeSettings = isGonnaChangeSettings.lower();
-    isGonnaChangeSettings += " ";
+def config_handle():
+    global setting;
 
+    config_save_path = "";
+    system_os = platform.system();
 
-    if (isGonnaChangeSettings[0] == "y" ):
+    if system_os == "Windows":
+        config_save_path = os.environ.get('APPDATA');
+    elif system_os == "Darwin":
+        config_save_path = os.path.expanduser(f"~/Library/Application Support")
+    else:
+        config_save_path = os.environ.get('XDG_CONFIG_HOME');
+
+    config_save_path = os.path.join( config_save_path , "midaseq" );
+    os.makedirs(config_save_path, exist_ok=True) #Create folder
+    config_save_path = os.path.join( config_save_path , "config.json" );
+
+    
+
+    if (allowConfigAtRuntime):
+        isGonnaChangeSettings = input("Wish to change any settings before conversion? [ yes / no / reset ]\n")
+        isGonnaChangeSettings = isGonnaChangeSettings.lower();
+        isGonnaChangeSettings += " ";
+
         
+        #reset_config = input("Reset settings? [yes/no]\n");
+        #reset_config = reset_config.lower()[0];
 
-        for cfg_id in setting:
-            _default_value = setting[cfg_id]['value'];
+        if (isGonnaChangeSettings[0] == "r"):
+            print("Settings reset to default.")
 
-            print("");
-            print( cfg_id);
-            print( "\"" + ( setting[cfg_id]['description'] ) + "\"");
-            print( "Default Value: ", _default_value);
-            print("(Leave nothing to set as default)");
-            print("");
+        elif (isGonnaChangeSettings[0] == "y" or  isGonnaChangeSettings[0] == "1" ):
+            config_load( config_save_path );
 
-            change_value = input( "Type value and press Enter.\n" );
-            if (change_value != "" and change_value != " "):
+            for cfg_id in setting:
+                _default_value = setting[cfg_id]['default'];
 
+                print("");
+                print( cfg_id);
+                print( "\"" + ( setting[cfg_id]['description'] ) + "\"");
+                print( "Current Value: ", setting[cfg_id]['value'] , " (Default:", _default_value , ")" );
+                print("");
 
-                change_value = change_value.lower();
-                
-
-                if( isinstance(_default_value, bool) ):
-
-                    if (change_value == "true" or change_value == "tru" or change_value == "1"):
-                        change_value = True;
-                    elif (change_value == "false" or change_value == "0"):
-                        change_value = False;
-                    else:
-                        change_value = _default_value;
+                change_value = input( "Type value and press Enter.\n" );
+                if (change_value != "" and change_value != " "):
 
 
+                    change_value = change_value.lower();
+                    
 
-                elif( isinstance(_default_value, int) ):
-                    change_value = int( change_value );
+                    if( isinstance(_default_value, bool) ):
 
-
-                setting[cfg_id]["value"] = change_value;
-
+                        if (change_value == "true" or change_value == "tru" or change_value == "1"):
+                            change_value = True;
+                        elif (change_value == "false" or change_value == "0"):
+                            change_value = False;
+                        else:
+                            change_value = _default_value;
 
 
 
-setting["overrideAllPrograms"]["value"] = int( setting["overrideAllPrograms"]["value"] );
-print( setting );
+                    elif( isinstance(_default_value, int) ):
+                        change_value = int( change_value );
+
+
+                    setting[cfg_id]["value"] = change_value;
+
+
+
+
+    setting["overrideAllPrograms"]["value"] = int( setting["overrideAllPrograms"]["value"] );
+    
+
+    config_save(config_save_path);
+
+    dprint( setting );
 
 
 
 
 
-def dprint( *args ):
-    if ( setting["enable_debugPrinting"]["value"]):
-        print( *args );
-
-def print_topic( *args ):
-    print( "  ■ ▲        /───────────── " , "log-topic: ", *args )
-    print( "  𐄂 ● ______/")
 
 
 def bytes2hex( _bytes ):
@@ -198,16 +254,6 @@ starting_channel_pan = [None] * track_amount;
 
 
 
-#Explanation (outdated)
-# 1 - Read MIDI file and for each event we read, we put that in the event_list
-#          format: track , absolute time, event in hex (minus delta)
-# 2 - We loop through each track in event_list, going through time
-#     ignoring the ones that happen after the current time passed.
-#     Then we make a new list, but with just one track and delta times
-#     followed by the event data
-#          format: new delta time, event in hex (minus delta)
-# 3 - We read through this merged list and then write the SEQ as we read it
-
 #Abstracted events
 event_list = [];
 merged_event_list = [];
@@ -259,7 +305,7 @@ input_tick : bytes = b'\x60'; #Default I set is 96 but doesnt really matter tbh
 input_tempo : bytes = b'\x06\x1A\x80'; #150 BPM by default, or 400000 ticks per quarter note
 
 
-def read_input_file( file_path ):
+def input_file_read( file_path ):
     global input_bytes;
     global input_trackData;
     global input_formatType;
@@ -322,31 +368,48 @@ def read_input_file( file_path ):
 
         
 
-        print("\ninput file done loading");
-
-
+        print("\ninput file done loading\n");
 
 
 input_file = "";
-default_file = "input.mid"
 output_path = "output.seq";
 
-
-if ( len(sys.argv) > 1 ):
-    input_file = sys.argv[1]; #Get the file path from dragged files
-    output_path = os.path.splitext(os.path.basename(input_file))[0] + ".seq";
-else:
-    input_file = default_file;
+def input_file_setup():
+    global input_file;
+    global output_path;
+    default_file = "input.mid"
     
 
+    input_file_name = "";
+    input_file = default_file;
+
+    if ( len(sys.argv) > 1 ):
+        input_file = sys.argv[1]; #Get the file path from dragged files
+        
+        output_path = os.path.splitext( os.path.basename(input_file) )[0] + ".seq";
+    elif ( not os.path.exists(default_file) ):
+        print("Default input file (input.mid) not found, please specify a file path")
+        new_path = input();
+
+        if ( os.path.exists(new_path) ):
+            input_file = new_path;
+
+            output_path = os.path.splitext( os.path.basename(input_file) )[0] + ".seq";
+        else:
+            sys.exit();
+
+        
+
+
+
+
+input_file_setup();
 
 if os.path.exists(input_file):
-    read_input_file( input_file )
-else:
-    print("ERROR: No input file found.")
-    print("Try dragging a file onto the program, or putting a file named input.mid in the same directory");
-    input("Press any key to exit...")
-    sys.exit();
+    input_file_read( input_file )
+
+
+config_handle();
 
 
 
@@ -545,7 +608,7 @@ def convert_event( _track_id , initial_read_pos : int , absolute_time : int , ru
 
                 if (song_bpm == None):
                     #First tempo event, so we're gonna set this variable here
-                    dprint("FIRST TEMPOOO")
+                    dprint("FIRST TEMPO FOUND")
                     seconds_per_beat = int.from_bytes(tempo_val) / 1000000;
                     spb_to_bpm = 60 / seconds_per_beat;
                     song_bpm = spb_to_bpm;
@@ -562,7 +625,7 @@ def convert_event( _track_id , initial_read_pos : int , absolute_time : int , ru
                 global song_timesig;
 
                 if (song_timesig == [] ):
-                    dprint("FIRST TIME SIGGG")
+                    dprint("FIRST TIME SIG. FOUND")
                     timesig_numerator =  track_data[_pos + 3]
                     timesig_denominator = pow_to_denominator(   track_data[_pos + 4]    );
                     song_timesig = [ timesig_numerator , timesig_denominator ];
@@ -637,7 +700,7 @@ def convert_event( _track_id , initial_read_pos : int , absolute_time : int , ru
             #or leaves them out entirely if they're just setting up default values
             #(the generic driver seems to already set up the defaults)
 
-            if ( setting["enable_optimizeRedundantChannelParams"]["value"] ):
+            if ( setting["remove_redundantChannelParams"]["value"] ):
                 global starting_channel_vol
                 global starting_channel_pan
                 global starting_channel_program
@@ -790,7 +853,10 @@ def merge_list():
     for t in event_list:
         merged_event_list = merged_event_list + t;
 
-    #Sort from lowest absolute time to highest, so there is no risk of negative delta
+    if ( setting["reorderEvents"]["value"] ):
+        merged_event_list.sort(key=lambda item: item[1] );
+
+    #Sort from lowest absolute time to highest
     merged_event_list.sort(key=lambda item: item[0] );
 
     if ( setting["remove_duplicateEvents"]["value"] ):
