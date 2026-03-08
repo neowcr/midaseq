@@ -11,10 +11,10 @@ Essentially being a "midi2seq".
 
 ## Usage
 1. First download the script or .exe version in the [Releases](https://github.com/neowcr/midaseq/releases) page.
-2. If you're using the executable version, you can drag and drop a .mid file and it will automatically run the script with that file. /
-If using the .py script, you first need [Python 3.0+](https://www.python.org/downloads) to be installed. Then you can either specify a file path when running the script, or put a file named "input.mid" in the same folder and it will detect automatically.
-3. Before the conversion begins, you can specify certain configurations to customize the output, if desired.
-4. You can then use the .seq file in many ways, including homebrew games using PsyQ, or generating a PSF file.
+2. If you're using the executable version, you don't have to install anything, and just drag and drop a .mid file and it will automatically run the script with that file.
+3. If using the .py script, you first need [Python 3.0+](https://www.python.org/downloads) to be installed. Then you can either specify a file path when running the script, or put a file named "input.mid" in the same folder and it will detect automatically.
+4. Before the conversion begins, you can specify certain configurations to customize the output, if desired.
+5. You can then use the .seq file in many ways, including homebrew games using PsyQ, or generating a PSF file.
 
 Some example guides can be found in the [wiki](https://github.com/neowcr/midaseq/wiki).
 
